@@ -10,19 +10,24 @@ const restartButton = document.getElementById('restartButton');
 canvas.width = 320;
 canvas.height = 480;
 
-// --- NUEVO: Cargar Sonidos ---
+// Cargar Sonidos
 const pointSound = new Audio('sounds/point.wav'); // Asegúrate que la ruta sea correcta
 const dieSound = new Audio('sounds/die.wav');   // Asegúrate que la ruta sea correcta
 
 // Función para reproducir sonido de forma segura
 function playSound(sound) {
-    sound.currentTime = 0; // Permite reproducir el sonido rápidamente si se llama varias veces
+    sound.currentTime = 0;
     sound.play().catch(error => {
-        // Los navegadores pueden bloquear la reproducción automática de audio
-        // si no hay interacción previa del usuario. En este juego, la interacción
-        // (barra espaciadora) ya habrá ocurrido.
         console.warn("Error al reproducir sonido:", error);
     });
+}
+
+// --- NUEVO: Función para detener un sonido ---
+function stopSound(sound) {
+    if (sound && !sound.paused) { // Verifica si el sonido existe y se está reproduciendo
+        sound.pause();
+        sound.currentTime = 0; // Reinicia el sonido para la próxima vez
+    }
 }
 
 // Propiedades del pájaro
@@ -36,7 +41,7 @@ const jumpStrength = -6;
 
 // Propiedades de las tuberías
 const pipeWidth = 52;
-const pipeGap = 160; // <-- MODIFICADO: Aumentamos el espacio
+const pipeGap = 160; // Espacio aumentado entre tuberías
 let pipeX = canvas.width;
 let pipeSpeed = 2;
 let pipes = [];
@@ -46,7 +51,6 @@ let score = 0;
 let gameOver = false;
 let gameStarted = false;
 
-// --- MODIFICADO: drawBird() con ojos y pico ---
 function drawBird() {
     // Cuerpo del pájaro
     ctx.fillStyle = '#f1c40f'; // Un amarillo más brillante
@@ -60,7 +64,6 @@ function drawBird() {
     ctx.lineTo(birdX + birdWidth * 0.6, birdY + birdHeight * 0.7);
     ctx.closePath();
     ctx.fill();
-
 
     // Ojo
     const eyeRadius = birdHeight * 0.15;
@@ -86,7 +89,6 @@ function drawBird() {
     ctx.closePath();
     ctx.fill();
 }
-
 
 function drawPipe(p) {
     ctx.fillStyle = '#27ae60';
@@ -120,7 +122,7 @@ function updatePipes() {
             score++;
             pipes[i].scored = true;
             updateScoreDisplay();
-            playSound(pointSound); // <-- NUEVO: Reproducir sonido de punto
+            playSound(pointSound);
         }
 
         if (pipes[i].x + pipeWidth < 0) {
@@ -158,6 +160,9 @@ function gameLoop() {
 }
 
 function startGame() {
+    // --- MODIFICADO: Detener el sonido de muerte antes de empezar ---
+    stopSound(dieSound);
+
     gameStarted = true;
     gameOver = false;
     birdY = canvas.height / 2;
@@ -172,19 +177,19 @@ function startGame() {
 }
 
 function endGame() {
-    if (gameOver) return; // Evitar que endGame se llame múltiples veces si ya terminó
+    if (gameOver) return; // Evitar que endGame se llame múltiples veces
     gameOver = true;
     gameStarted = false;
     finalScoreDisplay.textContent = score;
     gameOverScreen.style.display = 'block';
     scoreDisplay.style.display = 'none';
-    playSound(dieSound); // <-- NUEVO: Reproducir sonido de muerte
+    playSound(dieSound);
 }
 
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space') {
         e.preventDefault();
-        if (!gameStarted && !gameOver) { // Solo inicia si no ha empezado Y no está en pantalla de game over
+        if (!gameStarted && !gameOver) {
             startGame();
         } else if (gameStarted && !gameOver) {
             birdVelocityY = jumpStrength;
@@ -202,11 +207,21 @@ function initializeGame() {
     startScreen.style.display = 'block';
     gameOverScreen.style.display = 'none';
     scoreDisplay.style.display = 'none';
-    // Dibujar un pájaro estático en la pantalla de inicio
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar por si acaso
-    drawBird(); // Dibuja el pájaro en su posición inicial
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBird(); // Dibuja el pájaro en su posición inicial en la pantalla de inicio
 }
 
 window.onload = () => {
     initializeGame();
 };
+
+// Para PWA (opcional, como se discutió antes)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').then(registration => { // Asegúrate de que service-worker.js exista si usas PWA
+      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+    }).catch(error => {
+      console.log('ServiceWorker registration failed: ', error);
+    });
+  });
+}
